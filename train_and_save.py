@@ -4,6 +4,8 @@ import pickle
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
 
 # Calculate RSI
 def calculate_rsi(prices, window=14):
@@ -60,13 +62,27 @@ def generate_features(prices):
     
     return features
 
-# Model training and saving
-def train_and_save_model(prices, model_path='model.pkl', scaler_path='scaler.pkl'):
+# Generate labels based on price changes
+def generate_labels(prices):
+    labels = []
+    for i in range(prices.shape[0]):
+        instrument_prices = prices[i]
+        price_changes = np.sign(np.diff(instrument_prices))
+        labels.append(price_changes)
+    
+    # Make sure all labels are of the same length
+    min_length = min(len(label) for label in labels)
+    labels = np.array([label[-min_length:] for label in labels])
+    
+    return labels
+
+# Model training and testing
+def train_and_test_model(prices, model_path='model.pkl', scaler_path='scaler.pkl'):
     features = generate_features(prices)
-    positions = np.zeros_like(prices)  # Initial positions for training
+    labels = generate_labels(prices)
     
     X = features.reshape(-1, features.shape[2])
-    y = np.sign(positions[:, 1:].flatten())
+    y = labels.flatten()
     
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -82,7 +98,29 @@ def train_and_save_model(prices, model_path='model.pkl', scaler_path='scaler.pkl
     
     with open(scaler_path, 'wb') as scaler_file:
         pickle.dump(scaler, scaler_file)
+    
+    # Evaluate the model on the test data
+    y_pred = model.predict(X_test)
+    
+    print("Model details:")
+    print(model)
+    
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred))
+    
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+    
+    # Plot feature importances
+    importances = model.feature_importances_
+    indices = np.argsort(importances)[::-1]
+    plt.figure(figsize=(10, 6))
+    plt.title("Feature Importances")
+    plt.bar(range(X_test.shape[1]), importances[indices], align="center")
+    plt.xticks(range(X_test.shape[1]), indices)
+    plt.xlim([-1, X_test.shape[1]])
+    plt.show()
 
 if __name__ == "__main__":
     prices = np.loadtxt('prices.txt')
-    train_and_save_model(prices)  # Train the model and save it
+    train_and_test_model(prices)  # Train the model, save it, and test it
