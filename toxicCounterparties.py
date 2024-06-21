@@ -1,8 +1,5 @@
 
-import pickle
 import numpy as np
-
-from train_and_save import generate_features
 
 nInst = 50
 currentPos = np.zeros(nInst)
