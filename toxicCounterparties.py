@@ -3,7 +3,7 @@ import pandas as pd
 
 nInst = 50
 currentPos = np.zeros(nInst)
-clusters = [[19, 32, 48], [22, 46, 43, 37], [41, 35], [20, 25, 26]]  # clusters from analysis
+clusters = [[41,35]]#[[19, 32, 48], [22, 46, 43, 37], [41, 35], [20, 25, 26]]  # clusters from analysis
 
 def calculate_bollinger_bands(prices, window=20, num_std_dev=2):
     sma = prices.rolling(window=window).mean()
