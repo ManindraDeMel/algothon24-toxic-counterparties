@@ -4,7 +4,10 @@ import pandas as pd
 nInst = 50
 currentPos = np.zeros(nInst)
 clusters = [[41,35]]#[[19, 32, 48], [22, 46, 43, 37], [41, 35], [20, 25, 26]]  # clusters from analysis
-coint_pairs_hedge = [[20,35,0.51603,20],[14,42,0.765778,20],[1,10,1.147285,10],[43,9,0.234708,60]]#,[7,24,-0.873895,10],[28,45,-0.143413,20]] #
+#left over,[14,42,0.765778,50],[1,10,1.147285,20],[43,9,0.234708,60],[7,49,-1.214857,60],[28,45,-0.143413,100
+#neg[20,35,0.51603,20],[43,9,0.234708,60],[7,49,-1.214857,50]
+#pos [[14,42,0.765778,50],[28,45,-0.143413,100]]
+coint_pairs_hedge = [[14,42,0.765778,50],[28,45,-0.143413,100]] #
 def calculate_bollinger_bands(prices, window=20, num_std_dev=1):
     sma = prices.rolling(window=window).mean()
     std_dev = prices.rolling(window=window).std()
@@ -34,7 +37,7 @@ def calculate_returns(prices):
 def calculate_volatility(prices, window=14):
     return prices.pct_change().rolling(window=window).std()
 #hedge is -0.45987
-def trade_spread(prices, i, j, hedge_ratio,window,k,units):
+def trade_spread(prices, i, j, hedge_ratio,window,k,units,macy,macx):
     df = pd.DataFrame(prices.T, columns=[f'Instrument_{i}' for i in range(50)])
     hedge = pd.DataFrame({'hedge': [hedge_ratio]*(df.shape[0])})
     pairs_df = df[[f"Instrument_{i}", f"Instrument_{j}"]].copy()
@@ -58,11 +61,11 @@ def trade_spread(prices, i, j, hedge_ratio,window,k,units):
     #print(f"latest spread is {latest_spread},Upper: {latest_upper_band}, Lower: {latest_lower_band}")
     pos_x  =0 
     pos_y = 0
-    if latest_spread > latest_upper_band: #stock price will revert down, sell Y and buy X
+    if latest_spread > latest_upper_band: #and macx > 0: #stock price will revert down, sell Y and buy X
         pos_y = -units
         pos_x = -hedge_ratio*units
         #print("reverting down")
-    elif latest_spread < latest_lower_band: # price will revert up, spread will increaase
+    elif latest_spread < latest_lower_band :  # price will revert up, spread will increaase
         pos_y = units
         pos_x = hedge_ratio*units
        # print("reverting up")
@@ -83,14 +86,21 @@ def getMyPosition(prices):
         pair_2 = item[1]
         hedge_rat = item[2]
         windowpair = item[3]
-        pos_a,pos_b = trade_spread(prices,pair_1,pair_2,hedge_rat,windowpair,1,100)
+        a_macd = macd.iloc[:,pair_1].iloc[-1]
+        b_macd = macd.iloc[:,pair_2].iloc[-1]
+        #print((a_macd,b_macd))
+        pos_a,pos_b = trade_spread(prices,pair_1,pair_2,hedge_rat,windowpair,1,100,a_macd,b_macd)
         if (pos_a == pos_b == 0):
         # print("No Change, Looking back")
             new_prices = prices[:, :-1]
+            new_macd = macd.iloc[:-1,:]
             while (new_prices.shape[1] > windowpair):
                # print(f"length is {new_prices.shape[1]}")
-                pos_a, pos_b =  trade_spread(new_prices,pair_1,pair_2,hedge_rat,windowpair,1,100)
+                a_macd = new_macd.iloc[:,pair_1].iloc[-1]
+                b_macd = new_macd.iloc[:,pair_2].iloc[-1]
+                pos_a, pos_b =  trade_spread(new_prices,pair_1,pair_2,hedge_rat,windowpair,1,100,a_macd,b_macd)
                 new_prices = new_prices[:, :-1]
+                new_macd = new_macd.iloc[:-1,:]
                 if (pos_a != pos_b):
                     break 
         positions[pair_1] = pos_a
